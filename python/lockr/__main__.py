@@ -47,10 +47,11 @@ class VaultContext:
             click.echo(f"Error: {e}", err=True)
             return False
 
-    def ensure_authenticated(self) -> Optional[VaultDatabase]:
+    def ensure_authenticated(self) -> VaultDatabase:
         """Ensure user is authenticated, authenticate if not."""
         if not self.authenticate():
             sys.exit(1)
+        assert self.db is not None, "Database should be set after successful authentication"
         return self.db
 
 
@@ -62,7 +63,7 @@ class VaultContext:
     help="Path to vault file (default: vault.lockr)",
 )
 @click.pass_context
-def cli(ctx, vault_file):
+def cli(ctx: click.Context, vault_file: str) -> None:
     """Lockr - Personal vault for secure storage of secrets."""
     ctx.ensure_object(dict)
     ctx.obj = VaultContext(vault_file)
@@ -73,7 +74,7 @@ def cli(ctx, vault_file):
 @click.argument("value", required=False)
 @click.option("--stdin", is_flag=True, help="Read value from stdin")
 @click.pass_obj
-def add(vault_ctx: VaultContext, key: str, value: Optional[str], stdin: bool):
+def add(vault_ctx: VaultContext, key: str, value: Optional[str], stdin: bool) -> None:
     """Add a new secret to the vault."""
     # Validate key format
     if not validate_key(key):
@@ -115,7 +116,7 @@ def add(vault_ctx: VaultContext, key: str, value: Optional[str], stdin: bool):
     "--no-interactive", is_flag=True, help="Disable interactive search (require exact key)"
 )
 @click.pass_obj
-def get(vault_ctx: VaultContext, key: Optional[str], copy: bool, no_interactive: bool):
+def get(vault_ctx: VaultContext, key: Optional[str], copy: bool, no_interactive: bool) -> None:
     """Retrieve a secret from the vault."""
     # Authenticate and get secret
     db = vault_ctx.ensure_authenticated()
@@ -188,7 +189,7 @@ def get(vault_ctx: VaultContext, key: Optional[str], copy: bool, no_interactive:
                 pyperclip.copy(value)
                 click.echo(f"✅ Secret '{key}' copied to clipboard.")
                 # Auto-clear clipboard after 60 seconds
-                def clear_clipboard():
+                def clear_clipboard() -> None:
                     time.sleep(60)
                     try:
                         pyperclip.copy("")
@@ -215,7 +216,7 @@ def get(vault_ctx: VaultContext, key: Optional[str], copy: bool, no_interactive:
 @cli.command()
 @click.argument("pattern", required=False)
 @click.pass_obj
-def list(vault_ctx: VaultContext, pattern: Optional[str]):
+def list(vault_ctx: VaultContext, pattern: Optional[str]) -> None:
     """List all keys in the vault, optionally filtered by pattern."""
     # Authenticate and list keys
     db = vault_ctx.ensure_authenticated()
@@ -250,7 +251,7 @@ def list(vault_ctx: VaultContext, pattern: Optional[str]):
 @click.argument("value", required=False)
 @click.option("--stdin", is_flag=True, help="Read value from stdin")
 @click.pass_obj
-def update(vault_ctx: VaultContext, key: str, value: Optional[str], stdin: bool):
+def update(vault_ctx: VaultContext, key: str, value: Optional[str], stdin: bool) -> None:
     """Update an existing secret in the vault."""
     # Get value from stdin or prompt
     if stdin:
@@ -281,7 +282,7 @@ def update(vault_ctx: VaultContext, key: str, value: Optional[str], stdin: bool)
 @click.argument("key")
 @click.option("--confirm", "-y", is_flag=True, help="Skip confirmation prompt")
 @click.pass_obj
-def delete(vault_ctx: VaultContext, key: str, confirm: bool):
+def delete(vault_ctx: VaultContext, key: str, confirm: bool) -> None:
     """Delete a secret from the vault."""
     if not confirm:
         if not click.confirm(f"Are you sure you want to delete '{key}'?"):
@@ -304,7 +305,7 @@ def delete(vault_ctx: VaultContext, key: str, confirm: bool):
 
 @cli.command()
 @click.pass_obj
-def info(vault_ctx: VaultContext):
+def info(vault_ctx: VaultContext) -> None:
     """Show vault information."""
     # Create database instance without authenticating
     db = VaultDatabase(vault_ctx.vault_file)
@@ -329,5 +330,10 @@ def info(vault_ctx: VaultContext):
             click.echo(f"  Failed login attempts: {info['failed_attempts']}")
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Main entry point for the CLI application."""
     cli()
+
+
+if __name__ == "__main__":
+    main()

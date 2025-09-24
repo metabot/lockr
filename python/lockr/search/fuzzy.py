@@ -5,18 +5,20 @@ This module implements fuzzy string matching similar to fzf, with scoring
 based on character position, consecutive matches, and other factors.
 """
 
-from typing import List, Tuple, Optional, NamedTuple
-import math
+from typing import List, Optional, NamedTuple
 
 
 class MatchResult(NamedTuple):
     """Result of a fuzzy match."""
+
     text: str
     score: float
     positions: List[int]  # Character positions that matched
 
 
-def fuzzy_match(pattern: str, text: str, case_sensitive: bool = False) -> Optional[MatchResult]:
+def fuzzy_match(
+    pattern: str, text: str, case_sensitive: bool = False
+) -> Optional[MatchResult]:
     """
     Perform fuzzy matching between pattern and text.
 
@@ -62,7 +64,9 @@ def fuzzy_match(pattern: str, text: str, case_sensitive: bool = False) -> Option
     return MatchResult(text, score, positions)
 
 
-def _calculate_score(pattern: str, text: str, positions: List[int], case_sensitive: bool) -> float:
+def _calculate_score(
+    pattern: str, text: str, positions: List[int], case_sensitive: bool
+) -> float:
     """
     Calculate fuzzy match score based on FZF algorithm.
 
@@ -91,7 +95,7 @@ def _calculate_score(pattern: str, text: str, positions: List[int], case_sensiti
             score += 0.8
 
         # Word boundary bonus (after space, underscore, or dash)
-        elif pos > 0 and text[pos - 1] in ' _-':
+        elif pos > 0 and text[pos - 1] in " _-":
             score += 0.7
 
         # Camel case bonus (uppercase after lowercase)
@@ -130,8 +134,9 @@ def _calculate_score(pattern: str, text: str, positions: List[int], case_sensiti
     return score
 
 
-def fuzzy_search(pattern: str, candidates: List[str], limit: int = 100,
-                case_sensitive: bool = False) -> List[MatchResult]:
+def fuzzy_search(
+    pattern: str, candidates: List[str], limit: int = 100, case_sensitive: bool = False
+) -> List[MatchResult]:
     """
     Perform fuzzy search across multiple candidates.
 
@@ -162,9 +167,12 @@ def fuzzy_search(pattern: str, candidates: List[str], limit: int = 100,
     return results[:limit]
 
 
-def highlight_matches(text: str, positions: List[int],
-                     start_marker: str = "\033[1m\033[33m",  # Bold yellow
-                     end_marker: str = "\033[0m") -> str:
+def highlight_matches(
+    text: str,
+    positions: List[int],
+    start_marker: str = "\033[1m\033[33m",  # Bold yellow
+    end_marker: str = "\033[0m",
+) -> str:
     """
     Highlight matched characters in text using ANSI color codes.
 
@@ -197,4 +205,4 @@ def highlight_matches(text: str, positions: List[int],
     # Add remaining text
     result.append(text[last_pos:])
 
-    return ''.join(result)
+    return "".join(result)

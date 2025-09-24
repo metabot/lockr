@@ -70,7 +70,7 @@ class VaultDatabase:
             if self.connection:
                 try:
                     self._log_auth_attempt(success=False)
-                except:
+                except Exception:
                     pass  # Don't fail if logging fails
                 self.connection.close()
                 self.connection = None
@@ -101,6 +101,9 @@ class VaultDatabase:
 
     def _create_tables_fallback(self) -> None:
         """Fallback table creation if schema file not found."""
+        if not self.connection:
+            raise DatabaseError("Not connected to database")
+
         schema_sql = """
         CREATE TABLE IF NOT EXISTS secrets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -131,8 +134,9 @@ class VaultDatabase:
         CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
         """
 
-        self.connection.executescript(schema_sql)
-        self.connection.commit()
+        connection = self.connection  # Type narrowing for mypy
+        connection.executescript(schema_sql)
+        connection.commit()
 
     def add_secret(self, key: str, value: str) -> None:
         """
@@ -153,7 +157,7 @@ class VaultDatabase:
             raise ValueError(f"Invalid key format: {key}")
 
         try:
-            cursor = self.connection.execute(
+            self.connection.execute(
                 """
                 INSERT INTO secrets (key, value, created_at, last_accessed)
                 VALUES (?, ?, datetime('now'), datetime('now'))
@@ -192,7 +196,7 @@ class VaultDatabase:
             if result:
                 # Update last accessed time
                 self._update_last_accessed(key)
-                return result[0]
+                return str(result[0])  # Cast to string for type safety
 
             return None
 
@@ -352,8 +356,12 @@ class VaultDatabase:
 
     def _update_last_accessed(self, key: str) -> None:
         """Update last accessed timestamp for a key."""
+        if not self.connection:
+            return  # Can't update if not connected
+
         try:
-            self.connection.execute(
+            connection = self.connection  # Type narrowing
+            connection.execute(
                 """
                 UPDATE secrets
                 SET last_accessed = datetime('now'),
@@ -362,22 +370,26 @@ class VaultDatabase:
                 """,
                 (key,),
             )
-            self.connection.commit()
+            connection.commit()
         except sqlcipher.Error:
             pass  # Don't fail if we can't update stats
 
     def _log_auth_attempt(self, success: bool) -> None:
         """Log authentication attempt."""
+        if not self.connection:
+            return  # Can't log if not connected
+
         try:
             username = getpass.getuser()
-            self.connection.execute(
+            connection = self.connection  # Type narrowing
+            connection.execute(
                 """
                 INSERT INTO auth_attempts (username, success, timestamp)
                 VALUES (?, ?, datetime('now'))
                 """,
                 (username, success),
             )
-            self.connection.commit()
+            connection.commit()
         except (sqlcipher.Error, OSError):
             pass  # Don't fail if we can't log
 
@@ -387,10 +399,11 @@ class VaultDatabase:
             self.connection.close()
             self.connection = None
 
-    def __enter__(self):
+    def __enter__(self) -> 'VaultDatabase':
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[object]) -> None:
         """Context manager exit."""
+        del exc_type, exc_val, exc_tb  # Unused parameters
         self.close()

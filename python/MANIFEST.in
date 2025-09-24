@@ -1,0 +1,23 @@
+# Include important files in the distribution
+include README.md
+include LICENSE
+include pyproject.toml
+
+# Include schema files from parent directory
+recursive-include ../schema *.sql
+
+# Exclude test files and development files
+exclude test_*.py
+exclude quick_nav_test.py
+exclude create_sandbox.py
+exclude sandbox_vault.db
+exclude vault.lockr
+recursive-exclude tests *
+recursive-exclude .pytest_cache *
+recursive-exclude .mypy_cache *
+recursive-exclude .ruff_cache *
+recursive-exclude lockr.egg-info *
+
+# Exclude development artifacts
+exclude uv.lock
+exclude .coverage

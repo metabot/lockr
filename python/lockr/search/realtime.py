@@ -5,7 +5,7 @@ Provides a minimal interface that shows top 3 recommendations as user types,
 with Enter selecting the first result.
 """
 
-from typing import List, Optional, Callable
+from typing import List, Callable, Any
 from prompt_toolkit import Application
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import Layout, HSplit, Window
@@ -13,7 +13,7 @@ from prompt_toolkit.layout.controls import FormattedTextControl, BufferControl
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.formatted_text import FormattedText
 
-from .fuzzy import fuzzy_search, highlight_matches, MatchResult
+from .fuzzy import fuzzy_search, MatchResult
 
 
 class RealtimeSearchApp:
@@ -36,8 +36,7 @@ class RealtimeSearchApp:
 
         # Create search buffer
         self.search_buffer = Buffer(
-            multiline=False,
-            on_text_changed=self._on_search_changed
+            multiline=False, on_text_changed=self._on_search_changed
         )
 
         # Initialize with empty query (show first 3 items)
@@ -50,54 +49,64 @@ class RealtimeSearchApp:
         self.layout = self._create_layout()
 
         # Create application
-        self.app = Application(
+        self.app: Application[None] = Application(
             layout=self.layout,
             key_bindings=self.bindings,
             full_screen=False,
-            mouse_support=False
+            mouse_support=False,
         )
 
     def _create_key_bindings(self) -> KeyBindings:
         """Create key bindings for the interface."""
         bindings = KeyBindings()
 
-        @bindings.add('c-c', 'escape')
-        def _(event):
+        @bindings.add("c-c", "escape")
+        def _(event: Any) -> None:
             """Quit without selection."""
             event.app.exit()
 
-        @bindings.add('enter')
-        def _(event):
+        @bindings.add("enter")
+        def _(event: Any) -> None:
             """Select current highlighted result and exit."""
-            if self.current_results and 0 <= self.selected_index < len(self.current_results):
+            if self.current_results and 0 <= self.selected_index < len(
+                self.current_results
+            ):
                 selected = self.current_results[self.selected_index].text
                 self.on_select(selected)
             event.app.exit()
 
-        @bindings.add('tab')
-        def _(event):
+        @bindings.add("tab")
+        def _(event: Any) -> None:
             """Move to next result."""
             if self.current_results:
-                self.selected_index = (self.selected_index + 1) % len(self.current_results)
+                self.selected_index = (self.selected_index + 1) % len(
+                    self.current_results
+                )
 
-        @bindings.add('s-tab')  # Shift+Tab
-        def _(event):
+        @bindings.add("s-tab")  # Shift+Tab
+        def _(event: Any) -> None:
             """Move to previous result."""
             if self.current_results:
-                self.selected_index = (self.selected_index - 1) % len(self.current_results)
+                self.selected_index = (self.selected_index - 1) % len(
+                    self.current_results
+                )
 
         # Also support up/down arrows for navigation (secondary)
-        @bindings.add('down')
-        def _(event):
+        @bindings.add("down")
+        def _(event: Any) -> None:
             """Move to next result."""
             if self.current_results:
-                self.selected_index = (self.selected_index + 1) % len(self.current_results)
+                self.selected_index = (self.selected_index + 1) % len(
+                    self.current_results
+                )
 
-        @bindings.add('up')
-        def _(event):
+        @bindings.add("up")
+        def _(event: Any) -> None:
             """Move to previous result."""
             if self.current_results:
-                self.selected_index = (self.selected_index - 1) % len(self.current_results)
+                self.selected_index = (self.selected_index - 1) % len(
+                    self.current_results
+                )
 
         return bindings
 
@@ -115,40 +124,35 @@ class RealtimeSearchApp:
 
         # Results display (top 3 only)
         results_control = FormattedTextControl(
-            text=self._get_results_text,
-            focusable=False,
-            show_cursor=False
+            text=self._get_results_text, focusable=False, show_cursor=False
         )
 
         results_window = Window(
             content=results_control,
             height=4,  # Fixed height for 3 results + padding
-            wrap_lines=False
+            wrap_lines=False,
         )
 
         # Status line with match count and instructions
         status_control = FormattedTextControl(
-            text=self._get_status_text,
-            focusable=False
+            text=self._get_status_text, focusable=False
         )
 
-        status_window = Window(
-            content=status_control,
-            height=1,
-            style="class:status"
-        )
+        status_window = Window(content=status_control, height=1, style="class:status")
 
         # Create layout with minimal UI
-        root_container = HSplit([
-            Window(
-                content=FormattedTextControl(text="🔍 Interactive Search"),
-                height=1,
-                style="class:title"
-            ),
-            search_window,
-            results_window,
-            status_window,
-        ])
+        root_container = HSplit(
+            [
+                Window(
+                    content=FormattedTextControl(text="🔍 Interactive Search"),
+                    height=1,
+                    style="class:title",
+                ),
+                search_window,
+                results_window,
+                status_window,
+            ]
+        )
 
         return Layout(root_container, focused_element=search_window)
 
@@ -163,11 +167,15 @@ class RealtimeSearchApp:
         """Update search results based on query."""
         if not query:
             # Show first 3 items if no query
-            self.all_matching_results = [MatchResult(item, 0.0, []) for item in self.items]
+            self.all_matching_results = [
+                MatchResult(item, 0.0, []) for item in self.items
+            ]
             self.current_results = self.all_matching_results[:3]
         else:
             # Get all fuzzy search results for count, limit display to top 3
-            self.all_matching_results = fuzzy_search(query, self.items, limit=100, case_sensitive=False)
+            self.all_matching_results = fuzzy_search(
+                query, self.items, limit=100, case_sensitive=False
+            )
             self.current_results = self.all_matching_results[:3]
 
     def _get_results_text(self) -> FormattedText:
@@ -212,12 +220,16 @@ class RealtimeSearchApp:
         else:
             selection_info = ""
 
-        instructions = " • Tab/↓: next • Shift+Tab/↑: prev • Enter: select • Esc: cancel"
+        instructions = (
+            " • Tab/↓: next • Shift+Tab/↑: prev • Enter: select • Esc: cancel"
+        )
 
-        return FormattedText([
-            ("class:match-count", match_info + selection_info),
-            ("class:instructions", instructions)
-        ])
+        return FormattedText(
+            [
+                ("class:match-count", match_info + selection_info),
+                ("class:instructions", instructions),
+            ]
+        )
 
     def run(self) -> None:
         """Run the real-time search interface."""
