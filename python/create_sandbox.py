@@ -13,29 +13,61 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from lockr.database.manager import VaultDatabase
-from lockr.exceptions import AuthenticationError, DuplicateKeyError
+from lockr.exceptions import DuplicateKeyError
 
 
 def generate_random_string(length: int) -> str:
     """Generate a random string of given length."""
-    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+    return "".join(random.choices(string.ascii_letters + string.digits, k=length))
 
 
 def generate_test_secrets(count: int) -> list[tuple[str, str]]:
     """Generate test secrets with realistic-looking keys and values."""
     categories = [
-        'api_key', 'password', 'token', 'secret', 'credential', 'auth',
-        'database', 'service', 'config', 'env', 'dev', 'prod', 'staging'
+        "api_key",
+        "password",
+        "token",
+        "secret",
+        "credential",
+        "auth",
+        "database",
+        "service",
+        "config",
+        "env",
+        "dev",
+        "prod",
+        "staging",
     ]
 
     services = [
-        'github', 'gitlab', 'aws', 'azure', 'gcp', 'docker', 'kubernetes',
-        'redis', 'postgres', 'mysql', 'mongodb', 'elasticsearch', 'stripe',
-        'sendgrid', 'slack', 'discord', 'twitter', 'facebook', 'google',
-        'microsoft', 'apple', 'dropbox', 'notion', 'figma', 'vercel'
+        "github",
+        "gitlab",
+        "aws",
+        "azure",
+        "gcp",
+        "docker",
+        "kubernetes",
+        "redis",
+        "postgres",
+        "mysql",
+        "mongodb",
+        "elasticsearch",
+        "stripe",
+        "sendgrid",
+        "slack",
+        "discord",
+        "twitter",
+        "facebook",
+        "google",
+        "microsoft",
+        "apple",
+        "dropbox",
+        "notion",
+        "figma",
+        "vercel",
     ]
 
-    environments = ['dev', 'staging', 'prod', 'test', 'local']
+    environments = ["dev", "staging", "prod", "test", "local"]
 
     secrets = []
 
@@ -51,11 +83,11 @@ def generate_test_secrets(count: int) -> list[tuple[str, str]]:
             key = f"{service}_{category}_{i:03d}"
 
         # Generate realistic secret values
-        if 'password' in category:
+        if "password" in category:
             value = generate_random_string(random.randint(12, 24))
-        elif 'api_key' in category or 'token' in category:
+        elif "api_key" in category or "token" in category:
             value = f"sk-{generate_random_string(32)}"
-        elif 'secret' in category:
+        elif "secret" in category:
             value = generate_random_string(random.randint(16, 32))
         else:
             value = generate_random_string(random.randint(8, 20))
@@ -89,7 +121,7 @@ def main():
 
     # Generate test secrets
     print("Generating test secrets...")
-    secrets = generate_test_secrets(200)  # Generate 200 test secrets
+    secrets = generate_test_secrets(1000)  # Generate 1000 test secrets
 
     # Add secrets to vault
     print("Populating vault with test data...")
@@ -100,7 +132,7 @@ def main():
         try:
             db.add_secret(key, value)
             added_count += 1
-            if added_count % 50 == 0:
+            if added_count % 100 == 0:
                 print(f"  Added {added_count} secrets...")
         except DuplicateKeyError:
             duplicate_count += 1
