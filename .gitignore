@@ -8,3 +8,32 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Go-generated files
+go/bin/
+go/*.out
+go/*.test
+go/*.prof
+
+# Go vendor directory
+go/vendor/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Application files
+*.lockr
+*.db
+*.sqlite
+*.sqlite3
+
+# Test artifacts
+go/coverage.html
