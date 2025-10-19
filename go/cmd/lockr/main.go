@@ -6,11 +6,12 @@ import (
 
 var (
 	// Version information - set by build flags
-	Version   = "dev"
-	BuildTime = "unknown"
-	GitCommit = "unknown"
+	version = "dev"
+	commit  = "unknown"
+	date    = "unknown"
 )
 
 func main() {
+	cli.SetVersion(version, commit, date)
 	cli.Execute()
 }

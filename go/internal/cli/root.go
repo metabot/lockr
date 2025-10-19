@@ -64,6 +64,13 @@ Examples:
 	},
 }
 
+// SetVersion sets the version information for the CLI
+func SetVersion(version, commit, date string) {
+	versionInfo.version = version
+	versionInfo.commit = commit
+	versionInfo.date = date
+}
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {

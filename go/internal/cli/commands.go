@@ -327,11 +327,13 @@ var versionCmd = &cobra.Command{
 	Short: "Show version information",
 	Long:  `Display version information for the Lockr CLI.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Lockr CLI")
-		fmt.Printf("Version: %s\n", getVersion())
-		fmt.Printf("Build time: %s\n", getBuildTime())
-		fmt.Printf("Go version: %s\n", getGoVersion())
-		fmt.Printf("Platform: %s\n", getPlatform())
+		fmt.Printf("lockr version %s\n", getVersion())
+		if getCommit() != "unknown" {
+			fmt.Printf("commit: %s\n", getCommit())
+		}
+		if getBuildTime() != "unknown" {
+			fmt.Printf("built: %s\n", getBuildTime())
+		}
 	},
 }
 
@@ -461,20 +463,28 @@ func truncateString(s string, length int) string {
 }
 
 // Version information functions (these would be set by build flags)
+var (
+	versionInfo = struct {
+		version string
+		commit  string
+		date    string
+	}{
+		version: "dev",
+		commit:  "unknown",
+		date:    "unknown",
+	}
+)
+
 func getVersion() string {
-	return "0.1.0-dev"
+	return versionInfo.version
 }
 
 func getBuildTime() string {
-	return "unknown"
+	return versionInfo.date
 }
 
-func getGoVersion() string {
-	return "go1.21+"
-}
-
-func getPlatform() string {
-	return fmt.Sprintf("%s/%s", "darwin", "amd64")
+func getCommit() string {
+	return versionInfo.commit
 }
 
 // generateSecret generates a cryptographically secure random secret

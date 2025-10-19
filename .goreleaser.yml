@@ -1,0 +1,99 @@
+version: 2
+
+project_name: lockr
+
+before:
+  hooks:
+    - sh -c "cd go && go mod tidy"
+    - sh -c "cd go && go mod download"
+
+builds:
+  - id: lockr
+    main: ./cmd/lockr
+    binary: lockr
+    dir: ./go
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - darwin
+      # Linux cross-compilation requires Docker setup
+      # Will be added in future release
+      # - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: lockr
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - LICENSE*
+      - README.md
+      - go/README.md
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Others
+      order: 999
+
+# Homebrew tap configuration
+brews:
+  - name: lockr
+    repository:
+      owner: metabot
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: https://github.com/metabot/lockr
+    description: "Secure personal vault CLI with interactive fuzzy search"
+    license: MIT
+
+    # SQLCipher is required at runtime
+    dependencies:
+      - name: sqlcipher
+
+    test: |
+      system "#{bin}/lockr", "version"
+
+    install: |
+      bin.install "lockr"
+
+release:
+  github:
+    owner: metabot
+    name: lockr
+  draft: false
+  prerelease: auto
+  make_latest: true
