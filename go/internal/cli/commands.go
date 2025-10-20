@@ -348,12 +348,41 @@ Examples:
   lockr init --force        # Overwrite existing vault`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Check if vault already exists
+		vaultExists := false
 		if _, err := os.Stat(vaultPath); err == nil {
+			vaultExists = true
 			force, _ := cmd.Flags().GetBool("force")
 			if !force {
 				fmt.Printf("Vault already exists at %s\nUse --force to overwrite\n", vaultPath)
 				return
 			}
+		}
+
+		// If vault exists, delete it first
+		if vaultExists {
+			force, _ := cmd.Flags().GetBool("force")
+
+			if force {
+				// Using --force flag, delete without confirmation
+				fmt.Printf("⚠️  Overwriting existing vault at %s\n", vaultPath)
+			} else {
+				// Double confirmation when not using --force (shouldn't reach here normally)
+				fmt.Printf("⚠️  Warning: This will delete the existing vault at %s\n", vaultPath)
+				fmt.Print("Are you sure you want to overwrite? (y/N): ")
+				var response string
+				fmt.Scanln(&response)
+				if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+					fmt.Println("Cancelled")
+					return
+				}
+			}
+
+			// Delete the existing vault file
+			if err := os.Remove(vaultPath); err != nil {
+				handleError(err, "Failed to delete existing vault")
+				return
+			}
+			printVerbose("Deleted existing vault file")
 		}
 
 		// Ensure vault directory exists
@@ -380,6 +409,98 @@ Examples:
 	},
 }
 
+// rekeyCmd represents the rekey command for changing vault password
+var rekeyCmd = &cobra.Command{
+	Use:   "rekey",
+	Short: "Change the vault master password",
+	Long: `Change the encryption password for the vault. This re-encrypts the entire
+database with a new password. All stored secrets remain intact.
+
+This is useful for:
+- Regular password rotation
+- Recovering from password compromise
+- Switching to a stronger password
+
+Examples:
+  lockr rekey               # Change password with prompts
+  lockr rekey --auto-update # Update keyring automatically`,
+	Run: func(cmd *cobra.Command, args []string) {
+		// Check if vault exists
+		if _, err := os.Stat(vaultPath); os.IsNotExist(err) {
+			fmt.Printf("No vault found at %s\n", vaultPath)
+			fmt.Println("Run 'lockr init' to create a new vault")
+			return
+		}
+
+		// Prompt for current password
+		oldPassword, err := promptPassword("Enter current vault password: ")
+		if err != nil {
+			handleError(err, "Failed to read current password")
+			return
+		}
+
+		// Prompt for new password
+		newPassword, err := promptPassword("Enter new vault password: ")
+		if err != nil {
+			handleError(err, "Failed to read new password")
+			return
+		}
+
+		// Confirm new password
+		confirmPassword, err := promptPassword("Confirm new vault password: ")
+		if err != nil {
+			handleError(err, "Failed to read password confirmation")
+			return
+		}
+
+		if newPassword != confirmPassword {
+			fmt.Println("Error: Passwords do not match")
+			os.Exit(1)
+		}
+
+		// Perform rekey operation
+		fmt.Println("Re-encrypting vault with new password...")
+		if err := vaultDB.Rekey(oldPassword, newPassword); err != nil {
+			handleError(err, "Failed to rekey vault")
+			return
+		}
+
+		fmt.Println("✓ Vault password changed successfully")
+
+		// Update keyring if auto-update flag is set or prompt user
+		autoUpdate, _ := cmd.Flags().GetBool("auto-update")
+		if autoUpdate {
+			km := sessionMgr.GetKeyringManager()
+			if km.HasPassword() {
+				if err := km.UpdatePassword(newPassword); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to update keyring: %v\n", err)
+				} else {
+					fmt.Println("✓ Keyring updated with new password")
+				}
+			}
+		} else {
+			// Ask if user wants to update keyring
+			km := sessionMgr.GetKeyringManager()
+			if km.HasPassword() {
+				fmt.Print("\nUpdate stored password in keyring? (y/N): ")
+				var response string
+				fmt.Scanln(&response)
+				if strings.ToLower(response) == "y" || strings.ToLower(response) == "yes" {
+					if err := km.UpdatePassword(newPassword); err != nil {
+						fmt.Fprintf(os.Stderr, "Warning: failed to update keyring: %v\n", err)
+					} else {
+						fmt.Println("✓ Keyring updated with new password")
+					}
+				} else {
+					fmt.Println("Note: Old password remains in keyring. Run 'lockr keyring set' to update it.")
+				}
+			}
+		}
+
+		printVerbose("Vault re-encryption completed")
+	},
+}
+
 // Command flag initialization
 func init() {
 	// get command flags
@@ -393,6 +514,9 @@ func init() {
 	listCmd.Flags().String("format", "list", "Output format: list, table, json")
 	listCmd.Flags().String("sort", "accessed", "Sort by: key, created, accessed")
 	listCmd.Flags().Int("limit", 20, "Maximum number of search results to show")
+
+	// rekey command flags
+	rekeyCmd.Flags().Bool("auto-update", false, "Automatically update keyring without prompting")
 }
 
 // interactiveGet runs the interactive search interface

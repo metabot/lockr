@@ -159,6 +159,43 @@ func (vd *VaultDatabase) createSchemaFromEmbedded() error {
 	return nil
 }
 
+// Rekey changes the encryption password for the vault database
+// This operation re-encrypts the entire database with a new password
+func (vd *VaultDatabase) Rekey(oldPassword, newPassword string) error {
+	// First, verify the old password by connecting
+	if vd.isOpen {
+		// Close existing connection
+		if err := vd.Close(); err != nil {
+			return err
+		}
+	}
+
+	// Connect with old password
+	if err := vd.Connect(oldPassword); err != nil {
+		return fmt.Errorf("failed to verify old password: %w", err)
+	}
+
+	// Execute PRAGMA rekey to change the password
+	// SQLCipher will re-encrypt the entire database with the new password
+	_, err := vd.connection.Exec(fmt.Sprintf("PRAGMA rekey = '%s'", newPassword))
+	if err != nil {
+		vd.Close()
+		return NewDatabaseError("rekey", err)
+	}
+
+	// Close and reconnect with new password to verify
+	if err := vd.Close(); err != nil {
+		return err
+	}
+
+	// Reconnect with new password to verify it worked
+	if err := vd.Connect(newPassword); err != nil {
+		return fmt.Errorf("failed to verify new password after rekey: %w", err)
+	}
+
+	return nil
+}
+
 // Close closes the database connection
 func (vd *VaultDatabase) Close() error {
 	if !vd.isOpen || vd.connection == nil {

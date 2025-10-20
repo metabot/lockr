@@ -101,6 +101,7 @@ func init() {
 	statusCmd.GroupID = "management"
 	versionCmd.GroupID = "management"
 	keyringCmd.GroupID = "management"
+	rekeyCmd.GroupID = "management"
 
 	// Add subcommands
 	rootCmd.AddCommand(getCmd)
@@ -111,6 +112,7 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(keyringCmd)
+	rootCmd.AddCommand(rekeyCmd)
 }
 
 // initializeGlobals initializes the global components
